@@ -1,4 +1,4 @@
-var http = require('http'); 
+var http = require('http');
 var chalk = require('chalk');
 var MqttShepherd = require('mqtt-shepherd');
 var _ = require('busyman');
@@ -7,6 +7,8 @@ var model = require('./model/model');
 var ioServer = require('./helpers/ioServer');
 var server = http.createServer();
 var qserver = new MqttShepherd();
+
+var Dltdojo = require('./dltdojo')
 
 server.listen(3030);
 ioServer.start(server);
@@ -151,7 +153,7 @@ function getDevInfo(clientId) {
 var app = function () {
     setLeaveMsg();
 
-    ioServer.regReqHdlr('getDevs', function (args, cb) { 
+    ioServer.regReqHdlr('getDevs', function (args, cb) {
         // register your req handler, cb(err, data);
         var devs = {},
             recs = qserver.list();
@@ -169,7 +171,7 @@ var app = function () {
         });
     });
 
-    ioServer.regReqHdlr('permitJoin', function (args, cb) { 
+    ioServer.regReqHdlr('permitJoin', function (args, cb) {
         // register your req handler
         // cb(err, data);
         if (!isDemoRunning)
@@ -181,7 +183,7 @@ var app = function () {
         });
     });
 
-    ioServer.regReqHdlr('write', function (args, cb) { 
+    ioServer.regReqHdlr('write', function (args, cb) {
         // args = { permAddr, auxId, value }
         // register your req handler
         // cb(err, data);
@@ -196,7 +198,7 @@ var app = function () {
             rid = mainResourceName(oid);
         var rscPath = oid + '/' + iid + '/' + rid;
         var qnode = qserver.find(clientId);
-        
+
         if (!qnode)
             setImmediate(function () {
                 cb(new Error('Gadget not found.'));
@@ -279,6 +281,7 @@ var app = function () {
                 var qnode = qserver.find('d03');
                 if (!qnode) return;
                 if (data.data < 50)
+                    Dltdojo.Event(data)
                     qnode.writeReq('lightCtrl/0/onOff', 1, function (err, rsp) {
                         // console.log(rsp);
                             setTimeout(function () {
@@ -291,6 +294,7 @@ var app = function () {
             if (msg.qnode.clientId === 'd04' && data.oid === 'presence' && parseInt(data.iid) === 0 && data.rid === 'dInState') {
                 var qnode = qserver.find('d03');
                 if (!qnode) return;
+                Dltdojo.Event(data)
                 qnode.writeReq('lightCtrl/0/onOff', data.data, function (err, rsp) {
                     // console.log(rsp);
                 });
@@ -300,6 +304,7 @@ var app = function () {
             if (msg.qnode.clientId === 'd04' && data.oid === 'dOut' && parseInt(data.iid) === 0 && data.rid === 'dOutState') {
                 var qnode = qserver.find('d03');
                 if (!qnode) return;
+                Dltdojo.Event(data)
                 qnode.writeReq('buzzer/0/onOff', data.data, function (err, rsp) {
                     // console.log(rsp);
                 });
@@ -388,7 +393,7 @@ function devStatusInd (permAddr, status) {
 
     if (status === 'online')
         status = chalk.green(status);
-    else 
+    else
         status = chalk.red(status);
 
     console.log(chalk.magenta('[     devStatus ] ') + '@' + permAddr + ', ' + status);
@@ -495,6 +500,5 @@ function startObservingD04(qnode) {
         }).done();
     }, 600);
 }
-
 
 module.exports = app;
